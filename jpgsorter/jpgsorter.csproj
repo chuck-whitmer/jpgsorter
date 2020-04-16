@@ -7,7 +7,7 @@
     <ProjectGuid>{9FBC92C7-A912-4B5B-B9A3-E3968122FEBC}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>jpgsorter</RootNamespace>
-    <AssemblyName>jpgsorter</AssemblyName>
+    <AssemblyName>jpgsort</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -42,6 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IfdElement.cs" />
+    <Compile Include="JpegInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -49,4 +51,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy $(targetpath) c:\devbin</PostBuildEvent>
+  </PropertyGroup>
 </Project>
