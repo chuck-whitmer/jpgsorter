@@ -1,50 +1,56 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace jpgsorter
 {
     class Program
     {
-        static string filename = null;
+        static string files = null;
+        static bool doSubFolders = false;
+        static string directory = ".";
 
         static void Main(string[] args)
         {
             if (!ReadArgs(args)) return;
-            Console.WriteLine("File: {0}", filename);
-            try
+            Console.WriteLine("Directory: {0}  File: {1}", directory, files);
+            if (!Directory.Exists(directory))
+                Console.WriteLine("Given directory {0} is invalid", directory);
+            string[] filenames = Directory.GetFiles(directory, files, doSubFolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+            List<string> badFiles = new List<string>();
+            int count = 0;
+            foreach (string filename in filenames)
             {
-                JpegInfo ji = new JpegInfo(filename);
-                Console.WriteLine("File size: {0}", ji.FileSize);
-                Console.WriteLine("Camera make: {0}", ji.CameraMake);
-                Console.WriteLine("Camera model: {0}", ji.CameraModel);
-                Console.WriteLine("Camera orientation: {0}", ji.CameraOrientation);
-                if (ji.HaveFileChangeTime)
-                    Console.WriteLine("File change time: {0}", ji.FileChangeTime.ToString("MM/dd/yyyy HH:mm:ss.fff"));
-                Console.WriteLine("Exposure: {0:0.0000}", ji.Exposure);
-                Console.WriteLine("f-stop: {0:0.00}", ji.Fstop);
-                Console.WriteLine("Focal length: {0:0.00}", ji.FocalLength);
-                Console.WriteLine("ISO: {0}", ji.IsoSpeed);
-                if (ji.HaveOriginalTime)
-                    Console.WriteLine("Image taken: {0}", ji.OriginalTime.ToString("MM/dd/yyyy HH:mm:ss.fff"));
-                Console.WriteLine("Image width: {0}", ji.ImageWidth);
-                Console.WriteLine("Image height: {0}", ji.ImageHeight);
-                Console.WriteLine("Focal length (on 35mm): {0}", ji.FocalLengthOn35mm);
-                if (ji.HaveGps)
+                bool haveTime = false;
+                DateTime dt;
+                try
                 {
-                    Console.WriteLine("GPS coords: {0}", ji.GpsToString);
-                    Console.WriteLine("GPS altitude: {0:0.00}", ji.GpsAltitude);
-                    if (ji.HaveGpsTimeStamp)
-                        Console.WriteLine("GPS Timestamp: {0} UTC", ji.GpsTimeStamp.ToString("MM/dd/yyyy HH:mm:ss.fff"));
+                    JpegInfo ji = new JpegInfo(filename);
+                    if (ji.HaveOriginalTime)
+                    {
+                        dt = ji.OriginalTime;
+                        haveTime = true;
+                    }
                 }
-
-
+                catch (Exception e)
+                {
+                    //Console.WriteLine(" Exception: {0} in file {1}", e.Message, filename);
+                }
+                if (!haveTime)
+                    badFiles.Add(filename);
+                count++;
+                if (count % 10 == 0)
+                {
+                    Console.Write("{0}\r", count);
+                }
             }
-            catch (Exception e)
+            Console.WriteLine("{0} files processed", filenames.Length);
+            Console.WriteLine("{0} files had no original date", badFiles.Count);
+            if (badFiles.Count > 0)
             {
-                Console.WriteLine("Exception: {0}", e.Message);
+                Console.WriteLine("Unsorted files:");
+                foreach (string str in badFiles)
+                    Console.WriteLine(str);
             }
         }
 
@@ -56,6 +62,18 @@ namespace jpgsorter
                 {
                     switch (args[i])
                     {
+                        case "-d":
+                            i++;
+                            if (i >= args.Length)
+                            {
+                                Console.WriteLine("Missing directory name");
+                                return false;
+                            }
+                            directory = args[i];
+                            break;
+                        case "-s":
+                            doSubFolders = true;
+                            break;
                         default:
                             Console.WriteLine("Invalid command line switch");
                             return false;
@@ -64,9 +82,9 @@ namespace jpgsorter
                             return false;
                     }
                 }
-                else if (filename == null)
+                else if (files == null)
                 {
-                    filename = args[i];
+                    files = args[i];
                 }
                 else
                 {
@@ -74,7 +92,7 @@ namespace jpgsorter
                     return false;
                 }
             }
-            if (filename == null)
+            if (files == null)
             {
                 Console.WriteLine("A filename is required");
                 return false;

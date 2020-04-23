@@ -22,7 +22,7 @@ namespace jpgsorter
             Type = GetUint16(data, offset + 2, isIntel);
             int count = GetInt32(data, offset + 4, isIntel);
             if (Type < 0 || Type >= typeSizes.Length)
-                throw new Exception("Bad type in IFD element");
+                throw new Exception(string.Format("Bad type in IFD element. type = {0} offset = {1}",Type,offset));
             int typeSize = typeSizes[Type];
             int idx = (count*typeSize < 5) ? offset + 8 : GetInt32(data, offset + 8, isIntel);
             switch (Type)
@@ -62,8 +62,12 @@ namespace jpgsorter
                     for (int i = 0; i < count; i++)
                         Ints[i] = GetInt32(data, idx + 4 * i, isIntel);
                     break;
+                case 8:
+                    // Seen in Samsung 8822 tag.
+                    //Console.WriteLine("Unknown type in IFD element. tag = {0:X} type = {1} offset = {2}", Tag, Type, offset);
+                    break;
                 default:
-                    throw new Exception("Unknown type in IFD element");
+                    throw new Exception(string.Format("Unknown type in IFD element. tag = {0:X} type = {1} offset = {2}", Tag, Type, offset));
             }
 
         }

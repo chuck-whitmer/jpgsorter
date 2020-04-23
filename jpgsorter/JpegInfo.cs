@@ -25,11 +25,9 @@ namespace jpgsorter
             FileSize = fi.Length;
             FileTime = fi.CreationTime;
             FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
-            if (ReadBigEndianUshort(fs) != 0xFFD8u) throw new Exception(string.Format("File {0} is not a JPG image file", filename));
+            if (ReadBigEndianUshort(fs) != 0xFFD8) throw new Exception(string.Format("File {0} is not a JPG image file", filename));
             byte[] tiffData = TryToLoadExifData(fs);
             // Give it only two shots. It should be at the start of the file.
-            if (tiffData == null) tiffData = TryToLoadExifData(fs);
-            if (tiffData == null) tiffData = TryToLoadExifData(fs);
             if (tiffData == null) tiffData = TryToLoadExifData(fs);
             if (tiffData == null) throw new Exception(string.Format("EXIF data not found in file {0}", filename));
             // Read the byte order.
@@ -56,26 +54,27 @@ namespace jpgsorter
             //}
 
             // Look for the Exif IFD.
-            if (!TiffAttributes.ContainsKey(0x8769))
-                throw new Exception(string.Format("No Exif Attributes in {0}", FileName));
-            int newIdx = TiffAttributes[0x8769].Ints[0];
-            ifdOffset = newIdx + 2;
-            ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
-            for (int i = 0; i < ifdCount; i++)
+            if (TiffAttributes.ContainsKey(0x8769))
             {
-                IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
-                ExifAttributes.Add(ifd.Tag, ifd);
+                int newIdx = TiffAttributes[0x8769].Ints[0];
+                ifdOffset = newIdx + 2;
+                ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
+                for (int i = 0; i < ifdCount; i++)
+                {
+                    IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
+                    ExifAttributes.Add(ifd.Tag, ifd);
+                }
+                //Console.WriteLine("Exif Attributes:");
+                //foreach (IfdElement ifd in ExifAttributes.Values)
+                //{
+                //    Console.WriteLine(ifd.ToString());
+                //}
             }
-            //Console.WriteLine("Exif Attributes:");
-            //foreach (IfdElement ifd in ExifAttributes.Values)
-            //{
-            //    Console.WriteLine(ifd.ToString());
-            //}
 
             // Look for GPS data
             if (TiffAttributes.ContainsKey(0x8825))
             {
-                newIdx = TiffAttributes[0x8825].Ints[0];
+                int newIdx = TiffAttributes[0x8825].Ints[0];
                 ifdOffset = newIdx + 2;
                 ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
                 for (int i = 0; i < ifdCount; i++)
@@ -139,6 +138,14 @@ namespace jpgsorter
         {
             if (!dict.ContainsKey(tag)) return null;
             return dict[tag].Text;
+        }
+
+        public double Zoom
+        {
+            get
+            {
+                return GenericDouble(ExifAttributes, 0xA404);
+            }
         }
 
         public double GpsLatitude
@@ -385,7 +392,7 @@ namespace jpgsorter
                 return data;
             else
             {
-                Console.WriteLine("failed: marker = {0,4:X}  header = {1}", marker, Encoding.UTF8.GetString(header));
+                //Console.WriteLine("failed: marker = {0,4:X}  header = {1}", marker, Encoding.UTF8.GetString(header));
                 return null;
             }
         }
