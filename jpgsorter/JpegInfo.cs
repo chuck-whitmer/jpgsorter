@@ -24,69 +24,71 @@ namespace jpgsorter
             if (!fi.Exists) throw new Exception(string.Format("File {0} does not exist", filename));
             FileSize = fi.Length;
             FileTime = fi.CreationTime;
-            FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
-            if (ReadBigEndianUshort(fs) != 0xFFD8) throw new Exception(string.Format("File {0} is not a JPG image file", filename));
-            byte[] tiffData = TryToLoadExifData(fs);
-            // Give it only two shots. It should be at the start of the file.
-            if (tiffData == null) tiffData = TryToLoadExifData(fs);
-            if (tiffData == null) throw new Exception(string.Format("EXIF data not found in file {0}", filename));
-            // Read the byte order.
-            string byteOrder = Encoding.UTF8.GetString(tiffData, 0, 2);
-            bool isIntelByteOrder = byteOrder == "II"; // Intel order is Little Endian
-            if (!isIntelByteOrder)  // Otherwise better be Motorola byte ordering
+            using (FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
-                if (byteOrder != "MM") throw new Exception("Invalid byte ordering");
-            }
-            // Check the TIFF Header identifier.
-            if (GetUint16(tiffData, 2, isIntelByteOrder) != 42)
-                throw new Exception("TIFF Header lacks id tag");
-            int ifdOffset = GetInt32(tiffData, 4, isIntelByteOrder) + 2;
-            int ifdCount = GetUint16(tiffData, 8, isIntelByteOrder);
-            for (int i = 0; i < ifdCount; i++)
-            {
-                IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
-                TiffAttributes.Add(ifd.Tag, ifd);
-            }
-            //Console.WriteLine("TIFF Attributes:");
-            //foreach (IfdElement ifd in TiffAttributes.Values)
-            //{
-            //    Console.WriteLine(ifd.ToString());
-            //}
-
-            // Look for the Exif IFD.
-            if (TiffAttributes.ContainsKey(0x8769))
-            {
-                int newIdx = TiffAttributes[0x8769].Ints[0];
-                ifdOffset = newIdx + 2;
-                ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
+                if (ReadBigEndianUshort(fs) != 0xFFD8) throw new Exception(string.Format("File {0} is not a JPG image file", filename));
+                byte[] tiffData = TryToLoadExifData(fs);
+                // Give it only two shots. It should be at the start of the file.
+                if (tiffData == null) tiffData = TryToLoadExifData(fs);
+                if (tiffData == null) throw new Exception(string.Format("EXIF data not found in file {0}", filename));
+                // Read the byte order.
+                string byteOrder = Encoding.UTF8.GetString(tiffData, 0, 2);
+                bool isIntelByteOrder = byteOrder == "II"; // Intel order is Little Endian
+                if (!isIntelByteOrder)  // Otherwise better be Motorola byte ordering
+                {
+                    if (byteOrder != "MM") throw new Exception("Invalid byte ordering");
+                }
+                // Check the TIFF Header identifier.
+                if (GetUint16(tiffData, 2, isIntelByteOrder) != 42)
+                    throw new Exception("TIFF Header lacks id tag");
+                int ifdOffset = GetInt32(tiffData, 4, isIntelByteOrder) + 2;
+                int ifdCount = GetUint16(tiffData, 8, isIntelByteOrder);
                 for (int i = 0; i < ifdCount; i++)
                 {
                     IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
-                    ExifAttributes.Add(ifd.Tag, ifd);
+                    TiffAttributes.Add(ifd.Tag, ifd);
                 }
-                //Console.WriteLine("Exif Attributes:");
-                //foreach (IfdElement ifd in ExifAttributes.Values)
+                //Console.WriteLine("TIFF Attributes:");
+                //foreach (IfdElement ifd in TiffAttributes.Values)
                 //{
                 //    Console.WriteLine(ifd.ToString());
                 //}
-            }
 
-            // Look for GPS data
-            if (TiffAttributes.ContainsKey(0x8825))
-            {
-                int newIdx = TiffAttributes[0x8825].Ints[0];
-                ifdOffset = newIdx + 2;
-                ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
-                for (int i = 0; i < ifdCount; i++)
+                // Look for the Exif IFD.
+                if (TiffAttributes.ContainsKey(0x8769))
                 {
-                    IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
-                    GpsAttributes.Add(ifd.Tag, ifd);
+                    int newIdx = TiffAttributes[0x8769].Ints[0];
+                    ifdOffset = newIdx + 2;
+                    ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
+                    for (int i = 0; i < ifdCount; i++)
+                    {
+                        IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
+                        ExifAttributes.Add(ifd.Tag, ifd);
+                    }
+                    //Console.WriteLine("Exif Attributes:");
+                    //foreach (IfdElement ifd in ExifAttributes.Values)
+                    //{
+                    //    Console.WriteLine(ifd.ToString());
+                    //}
                 }
-                //Console.WriteLine("GPS Attributes:");
-                //foreach (IfdElement ifd in GpsAttributes.Values)
-                //{
-                //    Console.WriteLine(ifd.ToString());
-                //}
+
+                // Look for GPS data
+                if (TiffAttributes.ContainsKey(0x8825))
+                {
+                    int newIdx = TiffAttributes[0x8825].Ints[0];
+                    ifdOffset = newIdx + 2;
+                    ifdCount = GetUint16(tiffData, newIdx, isIntelByteOrder);
+                    for (int i = 0; i < ifdCount; i++)
+                    {
+                        IfdElement ifd = new IfdElement(tiffData, ifdOffset + 12 * i, isIntelByteOrder);
+                        GpsAttributes.Add(ifd.Tag, ifd);
+                    }
+                    //Console.WriteLine("GPS Attributes:");
+                    //foreach (IfdElement ifd in GpsAttributes.Values)
+                    //{
+                    //    Console.WriteLine(ifd.ToString());
+                    //}
+                }
             }
         }
 
